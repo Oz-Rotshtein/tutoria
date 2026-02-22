@@ -1,0 +1,75 @@
+// This is your database blueprint
+datasource db {
+  provider = "postgresql"
+ 
+}
+
+generator client {
+  provider = "prisma-client-js"
+ }
+
+model Tutor {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  bio             String? @db.Text
+  profileImage     String?   // URL to the image
+  education        Json?     // Stores array of degrees
+  certifications   Json?     // Stores array of certs
+  defaultDuration Int       @default(45) // Sarah's default lesson length
+  createdAt       DateTime  @default(now())
+  pricePerHour    Int       @default(100)
+  lessons         Lesson[]
+  students        Student[] // Junction for Many-to-Many
+  subjects        Subject[]
+  availability Availability[]
+}
+
+model Student {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  createdAt       DateTime  @default(now())
+  
+  lessons         Lesson[]
+  tutors          Tutor[]   // Junction for Many-to-Many
+}
+
+model Lesson {
+  id              String    @id @default(cuid())
+  startTime       DateTime
+  endTime         DateTime
+  status          String    @default("PENDING")
+  createdAt       DateTime  @default(now())
+
+  tutorId         String
+  tutor           Tutor     @relation(fields: [tutorId], references: [id])
+  studentId       String
+  student         Student   @relation(fields: [studentId], references: [id])
+}
+
+model Subject{
+  id String @id @default(cuid())
+  name String @unique
+  tutors Tutor[]
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model Availability {
+  id        String    @id @default(cuid())
+  day       DayOfWeek
+  startTime String    // We will store "09:00"
+  endTime   String    // We will store "17:00"
+  
+  tutorId   String
+  tutor     Tutor     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+}
