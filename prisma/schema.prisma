@@ -1,7 +1,6 @@
 // This is your database blueprint
 datasource db {
   provider = "postgresql"
- 
 }
 
 generator client {
@@ -16,7 +15,7 @@ model Tutor {
   profileImage     String?   // URL to the image
   education        Json?     // Stores array of degrees
   certifications   Json?     // Stores array of certs
-  defaultDuration Int       @default(45) // Sarah's default lesson length
+  defaultDuration Int       @default(60) 
   createdAt       DateTime  @default(now())
   pricePerHour    Int       @default(100)
   lessons         Lesson[]

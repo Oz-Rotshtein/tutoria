@@ -7,19 +7,41 @@ export async function bookLesson(formData: FormData) {
   const tutorId = formData.get("tutorId") as string;
   const studentId = formData.get("studentId") as string;
   const startTime = new Date(formData.get("startTime") as string);
-  const endTime = new Date(formData.get("endTime") as string);
 
-  // 1. Create the lesson in the database
-  await db.lesson.create({
+  // 1. Fetch the tutor to get their personal defaultDuration
+  const tutor = await db.tutor.findUnique({
+    where: { id: tutorId },
+    select: { defaultDuration: true }
+  });
+
+  // 2. Use their preference, or fallback to 60 if not set
+  const durationMinutes = tutor?.defaultDuration || 60;
+
+  // 3. Calculate endTime (StartTime + Duration)
+  const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+
+  // 4. Create the lesson with the calculated endTime
+  const overlapping = await db.lesson.findFirst({
+  where: {
+    tutorId,
+    OR: [
+      { startTime: { lt: endTime, gte: startTime } },
+      { endTime: { gt: startTime, lte: endTime } }
+    ]
+  }
+});
+
+if (overlapping) throw new Error("This tutor is already booked at this time!");
+  const lesson = await db.lesson.create({
     data: {
       tutorId,
       studentId,
       startTime,
-      endTime : new Date(startTime.getTime() + 60 * 60 * 1000),
+      endTime,
       status: "PENDING"
     }
   });
 
-  // 2. Refresh the page to show the slot is now taken
-  revalidatePath("/book");
+  revalidatePath("/dashboard");
+  return lesson;
 }
