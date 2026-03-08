@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css"; // This line is the magic that brings the styling back!
+import "./globals.css";
+import Navbar from "@/components/Navbar"; // ✨ 1. Import it
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Tutorly - Manage your Tutoring Business",
-  description: "The all-in-one platform for private tutors.",
+  title: "Tutorly",
+  description: "Find your perfect tutor",
 };
 
 export default function RootLayout({
@@ -17,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {/* Everything inside 'children' will be your Dashboard, Settings, etc. */}
+        <Navbar /> {/* ✨ 2. Drop it here, above children! */}
         {children}
       </body>
     </html>

@@ -1,97 +1,120 @@
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
-import 'dotenv/config';
+import { PrismaClient, DayOfWeek } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
-// Force the stable library engine to avoid the Prisma 7.3.0 "graph" bug
-process.env.PRISMA_CLIENT_ENGINE_TYPE = 'library';
-
-const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL 
-});
-
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('🧹 Clearing existing data...');
+  await prisma.booking.deleteMany();
+  await prisma.availability.deleteMany();
+  await prisma.student.deleteMany();
+  await prisma.tutor.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.subject.deleteMany();
 
-  // 1. Create or Update Subjects
-  const english = await prisma.Subject.upsert({
-    where: { name: 'English' },
-    update: {},
-    create: { name: 'English' },
-  });
+  console.log('📚 Creating School Subjects...');
+  const math = await prisma.subject.create({ data: { name: 'Mathematics' } });
+  const physics = await prisma.subject.create({ data: { name: 'Physics' } });
 
-  const math = await prisma.subject.upsert({
-    where: { name: 'Mathematics' },
-    update: {},
-    create: { name: 'Mathematics' },
-  });
+  const hashedPassword = await bcrypt.hash('password123', 10);
 
-  // 2. Create or Update the Tutor (Sarah Smith)
-  // We connect her to the English subject during creation/update
-  const tutor = await prisma.tutor.upsert({
-    where: { email: 'sarah.smith@tutorly.com' },
-    update: {
-      subjects: {
-        connect: { id: english.id }
-      }
-    },
-    create: {
-      name: 'Dr. Sarah Smith',
-      email: 'sarah.smith@tutorly.com',
-      defaultDuration: 45,
-      subjects: {
-        connect: { id: english.id }
-      }
-    },
-  });
-
-  // 3. Create or Update Students and Connect them to the Tutor
-  const alice = await prisma.student.upsert({
-    where: { email: 'alice@example.com' },
-    update: {
-      tutors: { connect: { id: tutor.id } }
-    },
-    create: {
-      name: 'Alice Wonderland',
-      email: 'alice@example.com',
-      tutors: { connect: { id: tutor.id } }
-    },
-  });
-
-  const bob = await prisma.student.upsert({
-    where: { email: 'bob.builder@example.com' },
-    update: {
-      tutors: { connect: { id: tutor.id } }
-    },
-    create: {
-      name: 'Bob Builder',
-      email: 'bob.builder@example.com',
-      tutors: { connect: { id: tutor.id } }
-    },
-  });
-
-  // 4. Create Lessons
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(10, 0, 0, 0);
-
-  const tomorrowEnd = new Date(tomorrow);
-  tomorrowEnd.setMinutes(tomorrow.getMinutes() + 45);
-
-  await prisma.lesson.create({
+  // ----------------------------------------------------
+  // 1. CREATE MASTER USER & TUTOR PROFILE (Separated)
+  // ----------------------------------------------------
+  console.log('👨‍🏫 Creating Tutor (Jordan)...');
+  
+  // Step A: Create Master User
+  const jordanUser = await prisma.user.create({
     data: {
-      startTime: tomorrow,
-      endTime: tomorrowEnd,
-      status: 'CONFIRMED',
-      tutorId: tutor.id,
-      studentId: alice.id,
-    },
+      email: 'jordan@example.com',
+      name: 'Jordan Miller',
+      hashedPassword: hashedPassword,
+      role: 'TUTOR',
+    }
   });
 
-  console.log('✅ Seeding finished successfully!');
+  // Step B: Create Tutor Profile and link the ID
+  const jordanTutor = await prisma.tutor.create({
+    data: {
+      userId: jordanUser.id, // ✨ Manually linking them here!
+      username: 'jordan-math',
+      name: 'Jordan Miller',
+      email: 'jordan@example.com',
+      bio: 'Expert math and physics tutor with 10 years experience.',
+      pricePerHour: 45,
+      subjects: { connect: [{ id: math.id }, { id: physics.id }] }
+    }
+  });
+
+  // ----------------------------------------------------
+  // 2. CREATE MULTIPLE TIME SLOTS (AVAILABILITY)
+  // ----------------------------------------------------
+  console.log('📅 Adding Availability for Jordan...');
+  await prisma.availability.createMany({
+    data: [
+      { tutorId: jordanTutor.id, day: DayOfWeek.MONDAY, startTime: '09:00', endTime: '11:00' },
+      { tutorId: jordanTutor.id, day: DayOfWeek.WEDNESDAY, startTime: '14:00', endTime: '16:00' },
+      { tutorId: jordanTutor.id, day: DayOfWeek.FRIDAY, startTime: '10:00', endTime: '12:00' },
+    ]
+  });
+
+  // ----------------------------------------------------
+  // 3. CREATE MASTER USERS & STUDENT PROFILES (Separated)
+  // ----------------------------------------------------
+  console.log('🎓 Creating 2 Mock Students...');
+  
+  // Alex
+  const alexUser = await prisma.user.create({
+    data: { email: 'alex@example.com', name: 'Alex Johnson', hashedPassword, role: 'STUDENT' }
+  });
+  const alexStudent = await prisma.student.create({
+    data: { userId: alexUser.id, name: 'Alex Johnson', email: 'alex@example.com' }
+  });
+
+  // Taylor
+  const taylorUser = await prisma.user.create({
+    data: { email: 'taylor@example.com', name: 'Taylor Smith', hashedPassword, role: 'STUDENT' }
+  });
+  const taylorStudent = await prisma.student.create({
+    data: { userId: taylorUser.id, name: 'Taylor Smith', email: 'taylor@example.com' }
+  });
+
+  // ----------------------------------------------------
+  // 4. CREATE BOOKINGS (LESSONS)
+  // ----------------------------------------------------
+  console.log('📆 Booking Lessons...');
+  
+  await prisma.booking.create({
+    data: {
+      tutorId: jordanTutor.id,
+      studentId: alexStudent.id,
+      day: 'MONDAY',
+      timeSlot: '09:00 - 10:00',
+      status: 'CONFIRMED'
+    }
+  });
+
+  await prisma.booking.create({
+    data: {
+      tutorId: jordanTutor.id,
+      studentId: taylorStudent.id,
+      day: 'WEDNESDAY',
+      timeSlot: '14:00 - 15:00',
+      status: 'PENDING'
+    }
+  });
+
+  await prisma.booking.create({
+    data: {
+      tutorId: jordanTutor.id,
+      studentId: alexStudent.id,
+      day: 'FRIDAY',
+      timeSlot: '10:00 - 11:00',
+      status: 'PENDING'
+    }
+  });
+
+  console.log('✅ Seed completed successfully!');
 }
 
 main()
@@ -101,5 +124,4 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
-    await pool.end();
   });

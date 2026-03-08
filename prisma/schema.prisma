@@ -1,56 +1,146 @@
-// This is your database blueprint
 datasource db {
   provider = "postgresql"
 }
 
 generator client {
   provider = "prisma-client-js"
- }
+}
+
+// --------------------------------------
+// AUTHENTICATION (NEXTAUTH MASTER TABLES)
+// --------------------------------------
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  
+  // ✨ Added for Email/Password Login
+  hashedPassword String?   
+  
+  // ✨ Tells us what kind of dashboard to load
+  role           Role      @default(STUDENT) 
+  createdAt      DateTime  @default(now())
+
+  accounts       Account[]
+  sessions       Session[]
+
+  // ✨ Links to their specific profile
+  tutorProfile   Tutor?
+  studentProfile Student?
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Role {
+  STUDENT
+  TUTOR
+}
+
+// --------------------------------------
+// PROFILES (TUTOR & STUDENT)
+// --------------------------------------
 
 model Tutor {
-  id              String    @id @default(cuid())
+  id              String         @id @default(cuid())
+  
+  // ✨ Connected to the Master User
+  userId          String         @unique
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  username        String         @unique
   name            String
-  email           String    @unique
-  bio             String? @db.Text
-  profileImage     String?   // URL to the image
-  education        Json?     // Stores array of degrees
-  certifications   Json?     // Stores array of certs
-  defaultDuration Int       @default(60) 
-  createdAt       DateTime  @default(now())
-  pricePerHour    Int       @default(100)
-  lessons         Lesson[]
-  students        Student[] // Junction for Many-to-Many
+  email           String         @unique
+  bio             String?        @db.Text
+  profileImage    String?        
+  defaultDuration Int            @default(60) 
+  pricePerHour    Int            @default(100)
+  createdAt       DateTime       @default(now())
+  
+  // Relations
   subjects        Subject[]
-  availability Availability[]
+  availability    Availability[]
+  bookings        Booking[]
+  education       Education[]
+  experience      Experience[]
 }
 
 model Student {
-  id              String    @id @default(cuid())
-  name            String
-  email           String    @unique
-  createdAt       DateTime  @default(now())
+  id        String    @id @default(cuid())
   
-  lessons         Lesson[]
-  tutors          Tutor[]   // Junction for Many-to-Many
+  // ✨ Connected to the Master User
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  email     String    @unique
+  createdAt DateTime  @default(now())
+  
+  // Relations
+  bookings  Booking[]
 }
 
-model Lesson {
-  id              String    @id @default(cuid())
-  startTime       DateTime
-  endTime         DateTime
-  status          String    @default("PENDING")
-  createdAt       DateTime  @default(now())
+// --------------------------------------
+// SCHEDULING & BOOKINGS
+// --------------------------------------
 
-  tutorId         String
-  tutor           Tutor     @relation(fields: [tutorId], references: [id])
-  studentId       String
-  student         Student   @relation(fields: [studentId], references: [id])
+model Booking {
+  id        String   @id @default(cuid())
+  day       String   // e.g., "MONDAY"
+  timeSlot  String   // e.g., "09:00 - 10:00"
+  status    String   @default("PENDING") // PENDING, CONFIRMED, or CANCELLED
+  createdAt DateTime @default(now())
+
+  tutorId   String
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
-model Subject{
-  id String @id @default(cuid())
-  name String @unique
-  tutors Tutor[]
+model Availability {
+  id        String    @id @default(cuid())
+  day       DayOfWeek
+  startTime String    // e.g., "09:00"
+  endTime   String    // e.g., "17:00"
+  
+  tutorId   String
+  tutor     Tutor     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
 }
 
 enum DayOfWeek {
@@ -63,12 +153,35 @@ enum DayOfWeek {
   SUNDAY
 }
 
-model Availability {
-  id        String    @id @default(cuid())
-  day       DayOfWeek
-  startTime String    // We will store "09:00"
-  endTime   String    // We will store "17:00"
+// --------------------------------------
+// METADATA
+// --------------------------------------
+
+model Subject {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  tutors Tutor[]
+}
+
+model Education {
+  id          String   @id @default(cuid())
+  degree      String   
+  institution String   
+  startYear   Int
+  endYear     Int?     
   
-  tutorId   String
-  tutor     Tutor     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId     String
+  tutor       Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+}
+
+model Experience {
+  id          String   @id @default(cuid())
+  title       String   
+  company     String   
+  startYear   Int
+  endYear     Int?     
+  description String?  
+  
+  tutorId     String
+  tutor       Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
 }

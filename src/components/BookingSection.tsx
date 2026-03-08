@@ -1,13 +1,8 @@
 "use client";
 
-import { useState } from 'react';
-import TutorCalendar from "./TutorCalendar";
-
-// 1. Define the interface to fix the "any" error
-interface Subject {
-  id: string;
-  name: string;
-}
+import { useState, useTransition } from "react";
+import { createBooking } from "@/app/actions/booking";
+import { Loader2, Calendar as CalendarIcon, Clock } from "lucide-react";
 
 interface Availability {
   id: string;
@@ -16,65 +11,180 @@ interface Availability {
   endTime: string;
 }
 
-interface Tutor {
-  id: string;
-  name: string;
-  pricePerHour: number;
-  defaultDuration: number;
-  availability: Availability[];
-  subjects: Subject[];
+interface Booking {
+  day: string;
+  timeSlot: string;
+  status: string;
 }
 
-// 2. Use the Tutor interface instead of 'any'
-export default function BookingSection({ tutor }: { tutor: Tutor }) {
-  const [selectedInfo, setSelectedInfo] = useState<{ day: string, time: string } | null>(null);
+interface BookingSectionProps {
+  tutorId: string;
+  pricePerHour: number;
+  duration: number;
+  availability: Availability[];
+  bookings?: Booking[]; 
+}
 
-  const handleBooking = () => {
-    if (!selectedInfo) return;
-    // We will connect this to a Server Action next!
-    console.log(`Booking for ${tutor.name} on ${selectedInfo.day} at ${selectedInfo.time}`);
+function generateTimeSlots(startTime: string, endTime: string, durationMinutes: number) {
+  const parseTime = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+  
+  const formatTime = (mins: number) => {
+    const h = Math.floor(mins / 60).toString().padStart(2, '0');
+    const m = (mins % 60).toString().padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
+  const start = parseTime(startTime);
+  const end = parseTime(endTime);
+  const slots: string[] = [];
+
+  for (let current = start; current + durationMinutes <= end; current += durationMinutes) {
+    slots.push(`${formatTime(current)} - ${formatTime(current + durationMinutes)}`);
+  }
+  
+  return slots;
+}
+
+export default function BookingSection({ 
+  tutorId, 
+  pricePerHour, 
+  duration, 
+  availability, 
+  bookings = [] 
+}: BookingSectionProps) {
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [isPending, startTransition] = useTransition();
+
+  const [optimisticBookings, setOptimisticBookings] = useState<Booking[]>([]);
+
+  const allBookings = [...bookings, ...optimisticBookings];
+
+  // ==========================================
+  // 🔐 MOCK AUTH: Paste your Student ID here
+  const MOCK_STUDENT_ID = "cmm0x1hx20003n8b6o8sj77t6"; 
+  // ==========================================
+
+  const availableDays = Array.from(new Set(availability.map(a => a.day)));
+
+  // ✨ THE BULLETPROOF FILTER: Ignores spaces and uppercase/lowercase differences
+  const availableSlots = availability
+    .filter(a => a.day.toUpperCase() === selectedDay.toUpperCase())
+    .flatMap(a => generateTimeSlots(a.startTime, a.endTime, duration))
+    .filter(slot => {
+      // Remove all spaces from the generated slot (e.g., "09:00 - 10:00" -> "09:00-10:00")
+      const cleanSlot = slot.replace(/\s/g, ''); 
+      
+      const isBooked = allBookings.some(b => {
+        // Remove all spaces from the database slot
+        const cleanDbSlot = b.timeSlot.replace(/\s/g, ''); 
+        
+        const isSameDay = b.day.toUpperCase() === selectedDay.toUpperCase();
+        const isSameTime = cleanDbSlot === cleanSlot;
+        const isNotCancelled = b.status !== "CANCELLED";
+        
+        return isSameDay && isSameTime && isNotCancelled;
+      });
+      
+      return !isBooked; 
+    });
+
+  const handleBookLesson = () => {
+    if (!selectedDay || !selectedTime) return;
+
+    startTransition(async () => {
+      const result = await createBooking(tutorId, MOCK_STUDENT_ID, selectedDay, selectedTime);
+      
+      if (result.success) {
+        alert("Booking request sent successfully!");
+        
+        setOptimisticBookings(prev => [
+          ...prev, 
+          { day: selectedDay, timeSlot: selectedTime, status: "PENDING" }
+        ]);
+        
+        setSelectedDay("");
+        setSelectedTime("");
+      } else {
+        alert(result.error || "Failed to book lesson. Please try again.");
+      }
+    });
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2">
-        <TutorCalendar 
-          availability={tutor.availability} 
-          duration={tutor.defaultDuration} 
-          onSelectSlot={(day, time) => setSelectedInfo({ day, time })}
-        />
+    <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
+      
+
+
+      <div className="flex justify-between items-center mb-6 pb-6 border-b border-slate-100">
+        <div>
+          <p className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-1">Session Rate</p>
+          <p className="text-3xl font-black text-slate-900">${pricePerHour}<span className="text-lg text-slate-400 font-medium">/hr</span></p>
+        </div>
       </div>
 
-      <div className="lg:col-span-1">
-        <div className="bg-white rounded-3xl p-6 shadow-xl border-2 border-slate-900 sticky top-24">
-          <div className="mb-6">
-            <span className="text-3xl font-bold">${tutor.pricePerHour}</span>
-            <span className="text-slate-500 text-sm ml-1">/ hour</span>
+      <div className="space-y-6">
+        {/* Step 1: Select Day */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-3">
+            <CalendarIcon className="w-4 h-4 text-indigo-600" /> Select Day
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {availableDays.length > 0 ? (
+              availableDays.map(day => (
+                <button
+                  key={day}
+                  onClick={() => { setSelectedDay(day); setSelectedTime(""); }}
+                  className={`p-3 rounded-xl text-sm font-bold transition-all border-2 
+                    ${selectedDay === day ? "border-indigo-600 bg-indigo-50 text-indigo-700" : "border-slate-100 text-slate-600 hover:border-indigo-200"}`}
+                >
+                  {day}
+                </button>
+              ))
+            ) : (
+              <p className="col-span-2 text-sm text-slate-500 italic">No availability listed.</p>
+            )}
           </div>
-
-          {selectedInfo ? (
-            <div className="mb-6 p-4 bg-indigo-50 rounded-2xl border border-indigo-100 animate-in fade-in zoom-in duration-300">
-              <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Selected Lesson</p>
-              <p className="text-slate-900 font-bold text-lg">{selectedInfo.day}</p>
-              <p className="text-indigo-600 font-semibold">{selectedInfo.time}</p>
-            </div>
-          ) : (
-            <div className="mb-6 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
-              <p className="text-sm text-slate-400">Please select a time slot to continue</p>
-            </div>
-          )}
-
-          <button 
-            onClick={handleBooking}
-            disabled={!selectedInfo}
-            className={`w-full font-bold py-4 rounded-2xl transition-all shadow-md
-              ${selectedInfo 
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95' 
-                : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
-          >
-            Confirm Booking
-          </button>
         </div>
+
+        {/* Step 2: Select Time */}
+        {selectedDay && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-3">
+              <Clock className="w-4 h-4 text-indigo-600" /> Select Time
+            </label>
+            <div className="grid grid-cols-2 gap-2"> 
+              {availableSlots.length > 0 ? (
+                availableSlots.map((slot, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedTime(slot)}
+                    className={`p-3 rounded-xl text-sm font-bold transition-all border-2 
+                      ${selectedTime === slot ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-100 text-slate-600 hover:border-indigo-200"}`}
+                  >
+                    {slot}
+                  </button>
+                ))
+              ) : (
+                <p className="col-span-2 text-sm text-slate-500 italic font-medium p-4 bg-slate-50 rounded-xl text-center">
+                  All slots booked for this day.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Confirm */}
+        <button
+          onClick={handleBookLesson}
+          disabled={!selectedDay || !selectedTime || isPending}
+          className="w-full mt-4 bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {isPending ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</> : "Confirm Booking"}
+        </button>
       </div>
     </div>
   );
