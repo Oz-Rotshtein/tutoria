@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma"; 
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { BookOpen, Clock, DollarSign, User } from "lucide-react";
@@ -12,15 +13,15 @@ export default async function TutorProfilePage({
   params: Promise<{ username: string }> 
 }) {
   const {username} = await params;
-  //const tutorIdFromUrl = resolvedParams.username;
 
-  const tutor = await db.tutor.findUnique({
+  const tutor = await prisma.tutor.findUnique({
     where: { username: username },
     include: {
       subjects: true,
       education: { orderBy: { startYear: 'desc' } },
       experience: { orderBy: { startYear: 'desc' } },
       availability: true, 
+      user: true, // ✨ Fetches the NextAuth user data (where the image lives!)
       bookings: {
            select: { day: true, timeSlot: true, status: true }                                                                                                                                         
       }
@@ -37,9 +38,12 @@ export default async function TutorProfilePage({
         
         {/* Top Header Mock-up */}
         <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row gap-8 items-center md:items-start">
-          <div className="w-32 h-32 md:w-40 md:h-40 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 shrink-0 border-4 border-white shadow-lg overflow-hidden">
-            {tutor.profileImage ? (
-              <img src={tutor.profileImage} alt={tutor.name} className="w-full h-full object-cover" />
+          
+          {/* ✨ UPGRADED AVATAR SECTION */}
+          <div className="w-32 h-32 md:w-40 md:h-40 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 shrink-0 border-4 border-white shadow-lg overflow-hidden relative">
+            {tutor.user?.image ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={tutor.user.image} alt={tutor.name} className="w-full h-full object-cover absolute inset-0" />
             ) : (
               <User className="w-16 h-16" />
             )}
@@ -90,7 +94,7 @@ export default async function TutorProfilePage({
                 pricePerHour={tutor.pricePerHour} 
                 availability={tutor.availability} 
                 duration={tutor.defaultDuration}
-                bookings = {tutor.bookings}
+                bookings={tutor.bookings}
               />
             </div>
           </div>

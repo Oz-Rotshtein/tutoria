@@ -1,7 +1,19 @@
+import * as dotenv from 'dotenv';
+dotenv.config(); // ✨ 1. Force the Mac to read the .env
+
 import { PrismaClient, DayOfWeek } from '@prisma/client';
+import { Pool } from 'pg'; // ✨ 2. Import the Postgres pooler
+import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+console.log("🚀 URL SUCCESSFULLY LOADED! Starting connection...");
+
+// ✨ 3. Pass the loaded URL into the Pool, then into the Adapter
+const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL 
+});
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🧹 Clearing existing data...');

@@ -1,29 +1,53 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
 import { 
   CalendarDays, Users, Clock, CheckCircle, 
-  GraduationCap, Briefcase, Settings, Plus 
+  Settings 
 } from "lucide-react";
 import Link from "next/link";
 import SettingsForm from "@/components/SettingsForm";
 import BookingActions from "@/components/BookingActions"; 
 import AvailabilityManager from "@/components/AvailabilityManager";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import SubjectManager from "@/components/SubjectManager";
+import ProfileImageManager from "@/components/ProfileImageManager";
+import EducationManager from "@/components/EducationManager";
+import ExperienceManager from "@/components/ExperienceManager";
 
-// ✨ Swapped this to prevent the Next.js infinite refresh bug!
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage({
-  params 
-}: { 
-  params: Promise<{ username: string }> 
-}) {
-   const {username} = await params;
-  const tutor = await db.tutor.findUnique({
-    where: { username: username },
+export default async function DashboardPage() {
+  // ✨ SECURITY LAYER 1 & 2: Get session and verify they are a logged-in Tutor
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-8">
+        <h2 className="text-2xl font-black text-slate-800 mb-2">Access Denied</h2>
+        <p className="text-slate-500 font-medium">You must be signed in to view this page.</p>
+        <Link href="/api/auth/signin" className="mt-4 text-indigo-600 font-bold hover:underline">Sign In</Link>
+      </div>
+    );
+  }
+
+  if (session.user.role !== "TUTOR") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-8">
+        <h2 className="text-2xl font-black text-slate-800 mb-2">Tutors Only</h2>
+        <p className="text-slate-500 font-medium">Students do not have access to the tutor dashboard.</p>
+      </div>
+    );
+  }
+
+  // Fetch the dashboard data
+  const tutor = await prisma.tutor.findUnique({
+    where: { userId: session.user.id },
     include: {
+      user: true, // ✨ We MUST include the parent User to verify ownership!
       education: { orderBy: { startYear: 'desc' } },
       experience: { orderBy: { startYear: 'desc' } },
       subjects: true,
-      availability: true, // ✨ Added this so the DB actually fetches the timeslots!
+      availability: true, 
       bookings: {
         include: { student: true }, 
         orderBy: { createdAt: 'desc' }
@@ -37,6 +61,18 @@ export default async function DashboardPage({
       <p className="text-slate-500">Please paste a valid Tutor ID from your seed script into the <code>MOCK_TUTOR_ID</code> variable.</p>
     </div>
   );
+
+  // ✨ SECURITY LAYER 3: Ownership Lock! 
+  if (tutor.userId !== session.user.id) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-8">
+        <div className="bg-red-50 border-2 border-red-200 p-8 rounded-3xl text-center max-w-md">
+          <h2 className="text-2xl font-black text-red-600 mb-2">Security Violation</h2>
+          <p className="text-red-800 font-medium">You are not authorized to view another tutor's private dashboard.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate stats based on this specific tutor's history
   const totalBookings = tutor.bookings.length;
@@ -70,16 +106,22 @@ export default async function DashboardPage({
         {/* LEFT COLUMN: Profile Management */}
         <div className="lg:col-span-2 space-y-8">
           
-          {/* Editable Settings Form */}
+          {/* Editable Settings Form & Profile Image */}
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
             <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-900">
               <Settings className="w-5 h-5 text-indigo-600" />
               General Information
             </h2>
-            <SettingsForm initialData={tutor} />
+            <ProfileImageManager currentImageUrl={tutor.user.image} />
+            <div className="mt-8 border-t border-slate-100 pt-8">
+              <SettingsForm initialData={tutor} />
+            </div>
           </div>
 
-          {/* ✨ NEW: Availability Manager */}
+          {/* Subject Manager */}
+          <SubjectManager currentSubjects={tutor.subjects} />
+
+          {/* Availability Manager */}
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
             <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-900">
               <Clock className="w-5 h-5 text-indigo-600" />
@@ -88,70 +130,9 @@ export default async function DashboardPage({
             <AvailabilityManager tutorId={tutor.id} availability={tutor.availability} />
           </div>
 
-          {/* Past Experience */}
-          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-slate-900">
-                <Briefcase className="w-5 h-5 text-indigo-600" />
-                Teaching Experience
-              </h2>
-              <button className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition">
-                <Plus className="w-4 h-4" /> Add Experience
-              </button>
-            </div>
-            
-            {tutor.experience.length > 0 ? (
-              <div className="space-y-4">
-                {tutor.experience.map((exp) => (
-                  <div key={exp.id} className="p-5 border border-slate-100 rounded-2xl bg-slate-50 relative group">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-bold text-slate-900 text-lg">{exp.title}</p>
-                        <p className="text-indigo-600 text-sm font-bold">{exp.company}</p>
-                      </div>
-                      <span className="text-slate-500 text-xs font-bold bg-white px-3 py-1 rounded-full border border-slate-200">
-                        {exp.startYear} - {exp.endYear || 'Present'}
-                      </span>
-                    </div>
-                    {exp.description && <p className="text-slate-600 text-sm mt-3 leading-relaxed">{exp.description}</p>}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-500 italic text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">No experience added yet.</p>
-            )}
-          </div>
-
-          {/* Education History */}
-          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-slate-900">
-                <GraduationCap className="w-5 h-5 text-indigo-600" />
-                Education
-              </h2>
-              <button className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition">
-                <Plus className="w-4 h-4" /> Add Degree
-              </button>
-            </div>
-            
-            {tutor.education.length > 0 ? (
-              <div className="space-y-4">
-                {tutor.education.map((edu) => (
-                  <div key={edu.id} className="p-5 border border-slate-100 rounded-2xl bg-slate-50 flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-slate-900 text-lg">{edu.degree}</p>
-                      <p className="text-slate-500 text-sm font-medium">{edu.institution}</p>
-                    </div>
-                    <span className="text-slate-500 text-xs font-bold bg-white px-3 py-1 rounded-full border border-slate-200">
-                      {edu.startYear} - {edu.endYear || 'Present'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-500 italic text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">No education history added yet.</p>
-            )}
-          </div>
+          {/* ✨ LIVE COMPONENTS: Past Experience & Education History */}
+          <ExperienceManager currentExperience={tutor.experience} />
+          <EducationManager currentEducation={tutor.education} />
 
         </div>
 

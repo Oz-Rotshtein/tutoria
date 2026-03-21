@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createBooking } from "@/app/actions/booking";
-import { Loader2, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Clock, AlertCircle } from "lucide-react";
 
 interface Availability {
   id: string;
@@ -57,68 +57,56 @@ export default function BookingSection({
 }: BookingSectionProps) {
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null); // ✨ New error state
   const [isPending, startTransition] = useTransition();
 
   const [optimisticBookings, setOptimisticBookings] = useState<Booking[]>([]);
-
   const allBookings = [...bookings, ...optimisticBookings];
-
-  // ==========================================
-  // 🔐 MOCK AUTH: Paste your Student ID here
-  const MOCK_STUDENT_ID = "cmm0x1hx20003n8b6o8sj77t6"; 
-  // ==========================================
 
   const availableDays = Array.from(new Set(availability.map(a => a.day)));
 
-  // ✨ THE BULLETPROOF FILTER: Ignores spaces and uppercase/lowercase differences
   const availableSlots = availability
     .filter(a => a.day.toUpperCase() === selectedDay.toUpperCase())
     .flatMap(a => generateTimeSlots(a.startTime, a.endTime, duration))
     .filter(slot => {
-      // Remove all spaces from the generated slot (e.g., "09:00 - 10:00" -> "09:00-10:00")
       const cleanSlot = slot.replace(/\s/g, ''); 
-      
       const isBooked = allBookings.some(b => {
-        // Remove all spaces from the database slot
         const cleanDbSlot = b.timeSlot.replace(/\s/g, ''); 
-        
         const isSameDay = b.day.toUpperCase() === selectedDay.toUpperCase();
         const isSameTime = cleanDbSlot === cleanSlot;
         const isNotCancelled = b.status !== "CANCELLED";
-        
         return isSameDay && isSameTime && isNotCancelled;
       });
-      
       return !isBooked; 
     });
 
   const handleBookLesson = () => {
     if (!selectedDay || !selectedTime) return;
+    
+    setErrorMessage(null); // Clear old errors
 
     startTransition(async () => {
-      const result = await createBooking(tutorId, MOCK_STUDENT_ID, selectedDay, selectedTime);
+      // ✨ SECURITY UPDATE: We removed the MOCK_ID! The server handles it now.
+      const result = await createBooking(tutorId, selectedDay, selectedTime);
       
       if (result.success) {
-        alert("Booking request sent successfully!");
-        
         setOptimisticBookings(prev => [
           ...prev, 
           { day: selectedDay, timeSlot: selectedTime, status: "PENDING" }
         ]);
-        
         setSelectedDay("");
         setSelectedTime("");
+        // Optional: you could add a success state message here too!
+        alert("Booking request sent successfully!"); 
       } else {
-        alert(result.error || "Failed to book lesson. Please try again.");
+        // ✨ Catch the server's clear error message
+        setErrorMessage(result.error || "Failed to book lesson. Please try again.");
       }
     });
   };
 
   return (
     <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
-      
-
-
       <div className="flex justify-between items-center mb-6 pb-6 border-b border-slate-100">
         <div>
           <p className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-1">Session Rate</p>
@@ -137,7 +125,7 @@ export default function BookingSection({
               availableDays.map(day => (
                 <button
                   key={day}
-                  onClick={() => { setSelectedDay(day); setSelectedTime(""); }}
+                  onClick={() => { setSelectedDay(day); setSelectedTime(""); setErrorMessage(null); }}
                   className={`p-3 rounded-xl text-sm font-bold transition-all border-2 
                     ${selectedDay === day ? "border-indigo-600 bg-indigo-50 text-indigo-700" : "border-slate-100 text-slate-600 hover:border-indigo-200"}`}
                 >
@@ -161,7 +149,7 @@ export default function BookingSection({
                 availableSlots.map((slot, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setSelectedTime(slot)}
+                    onClick={() => { setSelectedTime(slot); setErrorMessage(null); }}
                     className={`p-3 rounded-xl text-sm font-bold transition-all border-2 
                       ${selectedTime === slot ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-100 text-slate-600 hover:border-indigo-200"}`}
                   >
@@ -177,7 +165,15 @@ export default function BookingSection({
           </div>
         )}
 
-        {/* Step 3: Confirm */}
+        {/* ✨ Step 3: Error Message Display */}
+        {errorMessage && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-start gap-2 text-sm font-medium animate-in fade-in">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <p>{errorMessage}</p>
+          </div>
+        )}
+
+        {/* Step 4: Confirm */}
         <button
           onClick={handleBookLesson}
           disabled={!selectedDay || !selectedTime || isPending}

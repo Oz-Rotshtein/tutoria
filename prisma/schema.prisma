@@ -91,6 +91,19 @@ model Tutor {
   defaultDuration Int            @default(60) 
   pricePerHour    Int            @default(100)
   createdAt       DateTime       @default(now())
+
+  // location attributes:
+  address           String?
+  city              String?
+  country           String?
+  latitude          Float?    // The exact North/South coordinate
+  longitude         Float?    // The exact East/West coordinate
+  maxTravelDistance Int       @default(10)
+
+
+  teachingModes  TeachingMode[] // Array of modes they offer
+  isVerified     Boolean        @default(false) // For the blue checkmark!
+  
   
   // Relations
   subjects        Subject[]
@@ -98,6 +111,8 @@ model Tutor {
   bookings        Booking[]
   education       Education[]
   experience      Experience[]
+  reviews        Review[]       // Connection to the new review system
+
 }
 
 model Student {
@@ -107,12 +122,20 @@ model Student {
   userId    String    @unique
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // ✨ UPGRADED LOCATION DATA
+  address           String?
+  city              String?
+  country           String?
+  latitude          Float?
+  longitude         Float?
+
   name      String
   email     String    @unique
   createdAt DateTime  @default(now())
   
   // Relations
   bookings  Booking[]
+  reviews   Review[]
 }
 
 // --------------------------------------
@@ -123,7 +146,16 @@ model Booking {
   id        String   @id @default(cuid())
   day       String   // e.g., "MONDAY"
   timeSlot  String   // e.g., "09:00 - 10:00"
-  status    String   @default("PENDING") // PENDING, CONFIRMED, or CANCELLED
+  
+  // ✨ NEW CALENDAR & RECURRING FEATURES
+  date             DateTime? // The exact calendar date (e.g., Oct 24, 2026)
+  isRecurring      Boolean   @default(false) 
+  recurringGroupId String?   // Links all lessons in a weekly series together
+  
+  // ✨ NEW POST-LESSON FEATURES
+  tutorNotes       String?   @db.Text // Homework, feedback, or summary
+
+  status    String   @default("PENDING") // PENDING, CONFIRMED, CANCELLED, COMPLETED
   createdAt DateTime @default(now())
 
   tutorId   String
@@ -131,6 +163,9 @@ model Booking {
   
   studentId String
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  mode      TeachingMode @default(ONLINE)
+  review    Review?      // A booking can have ONE review attached to it
 }
 
 model Availability {
@@ -172,6 +207,8 @@ model Education {
   
   tutorId     String
   tutor       Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  documentUrl String?   // Secure URL to the uploaded diploma/transcript
+  isVerified  Boolean   @default(false)
 }
 
 model Experience {
@@ -184,4 +221,34 @@ model Experience {
   
   tutorId     String
   tutor       Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+}
+
+enum TeachingMode {
+  ONLINE
+  IN_PERSON_TUTOR  // At the tutor's house/office
+  IN_PERSON_STUDENT // At the student's house
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED // ✨ NEW: We need this so students can only review finished lessons!
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  rating      Int      // 1 to 5 stars
+  comment     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  // Relations
+  bookingId   String   @unique // One review per booking
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  tutorId     String
+  tutor       Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }

@@ -1,55 +1,50 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { GraduationCap, LogIn, LayoutDashboard, LogOut, Search } from "lucide-react";
 
 export default async function Navbar() {
-  // ✨ Securely fetch the logged-in user's session directly from the server!
+  // Grab the secure session directly on the server!
   const session = await getServerSession(authOptions);
 
   return (
-    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+    <nav className="border-b border-slate-200 bg-white sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        
+        {/* 1. BRAND LOGO */}
+        <Link href="/" className="flex items-center gap-2 text-indigo-600 font-black text-xl tracking-tight group">
+          <GraduationCap className="w-8 h-8 group-hover:-translate-y-1 transition-transform" />
+          Tutorly
+        </Link>
+
+        {/* 2. NAVIGATION LINKS */}
+        <div className="flex items-center gap-4 md:gap-6">
           
-          {/* Logo */}
-          <Link href="/" className="text-2xl font-black text-indigo-600 tracking-tight hover:opacity-80 transition">
-            Tutorly.
+          {/* Always show the Search button */}
+          <Link href="/tutors" className="text-sm font-bold text-slate-600 hover:text-indigo-600 flex items-center gap-1.5 transition-colors">
+            <Search className="w-4 h-4" /> 
+            <span className="hidden md:inline">Find Tutors</span>
           </Link>
 
-          {/* Auth Controls */}
-          <div className="flex items-center gap-4">
-            {session && session.user ? (
-              // ✅ IF LOGGED IN: Show Profile & Sign Out
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <img 
-                    src={session.user.image || ""} 
-                    alt="Profile" 
-                    className="w-8 h-8 rounded-full border border-slate-200"
-                  />
-                  <span className="text-sm font-bold text-slate-700 hidden sm:block">
-                    {session.user.name}
-                  </span>
-                </div>
-                {/* NextAuth provides a built-in signout route! */}
-                <Link 
-                  href="/api/auth/signout" 
-                  className="text-sm font-bold text-slate-500 hover:text-slate-900 transition"
-                >
-                  Log out
-                </Link>
-              </div>
-            ) : (
-              // ❌ IF NOT LOGGED IN: Show Sign In
-              <Link 
-                href="/api/auth/signin" 
-                className="bg-slate-900 text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-indigo-600 transition-all"
-              >
-                Sign In
+          {/* Conditional Rendering based on Authentication */}
+          {session ? (
+            <>
+              <Link href="/dashboard" className="text-sm font-bold text-slate-600 hover:text-indigo-600 flex items-center gap-1.5 transition-colors">
+                <LayoutDashboard className="w-4 h-4" /> 
+                <span className="hidden md:inline">Dashboard</span>
               </Link>
-            )}
-          </div>
-
+              
+              <Link href="/api/auth/signout" className="text-sm font-bold text-slate-500 hover:text-red-600 flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg transition-colors border border-slate-100">
+                <LogOut className="w-4 h-4" /> 
+                <span className="hidden md:inline">Sign Out</span>
+              </Link>
+            </>
+          ) : (
+            <Link href="/api/auth/signin" className="text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-sm">
+              <LogIn className="w-4 h-4" /> Sign In
+            </Link>
+          )}
+          
         </div>
       </div>
     </nav>
