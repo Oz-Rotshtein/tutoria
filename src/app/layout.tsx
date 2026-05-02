@@ -1,32 +1,41 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Assistant } from "next/font/google";
 import "./globals.css";
+import { getLocale } from "@/lib/dictionary"; 
 
-// ✨ 1. Import your new Navbar
-import Navbar from "@/components/Navbar";
+// ✨ Exact match to your file name
+import Navbar from "@/components/Navbar"; 
 
-const inter = Inter({ subsets: ["latin"] });
+const assistant = Assistant({ 
+  subsets: ["latin", "hebrew"],
+  variable: "--font-assistant",
+});
 
 export const metadata: Metadata = {
-  title: "Tutorly - Find Your Perfect Tutor",
-  description: "Book expert tutors for any subject.",
+  title: "Tutorly",
+  description: "Find your perfect tutor.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  
+  const locale = await getLocale();
+  const direction = locale === "he" ? "rtl" : "ltr";
+
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-slate-50 min-h-screen flex flex-col`}>
-        {/* ✨ 2. Drop the Navbar right here at the top of the body! */}
-        <Navbar />
+    <html lang={locale} dir={direction}>
+      <body className={`${assistant.className} bg-slate-50 text-slate-900 min-h-screen flex flex-col`}>
         
-        {/* The rest of your pages will render inside this main tag */}
+        {/* ✨ The Navbar is injected here */}
+        <Navbar locale={locale} />
+        
         <main className="flex-grow">
           {children}
         </main>
+
       </body>
     </html>
   );

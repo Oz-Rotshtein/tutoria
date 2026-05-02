@@ -13,17 +13,33 @@ interface Experience {
   description: string | null;
 }
 
-export default function ExperienceManager({ currentExperience }: { currentExperience: Experience[] }) {
+interface ExperienceManagerProps {
+  currentExperience: Experience[];
+  dict: {
+    title: string;
+    jobPlaceholder: string;
+    companyPlaceholder: string;
+    startYear: string;
+    endYear: string;
+    currentJob: string;
+    descPlaceholder: string;
+    addButton: string;
+    present: string;
+    noExperience: string;
+    addSuccess: string;
+    addError: string;
+  };
+}
+
+export default function ExperienceManager({ currentExperience, dict }: ExperienceManagerProps) {
   const [isPending, startTransition] = useTransition();
   
-  // 1. Core State
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
   const [startYear, setStartYear] = useState(new Date().getFullYear() - 2);
   const [endYear, setEndYear] = useState(new Date().getFullYear());
   const [description, setDescription] = useState("");
 
-  // ✨ 2. NEW: "Current" Toggle & Status Messages
   const [isCurrent, setIsCurrent] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error", message: string } | null>(null);
 
@@ -43,7 +59,6 @@ export default function ExperienceManager({ currentExperience }: { currentExperi
       const result = await addExperience(payload);
       
       if (result.success) {
-        // ✨ 3. NEW: Reset everything back to defaults on success!
         setTitle("");
         setCompany("");
         setDescription("");
@@ -51,10 +66,10 @@ export default function ExperienceManager({ currentExperience }: { currentExperi
         setEndYear(new Date().getFullYear());
         setIsCurrent(false);
         
-        setStatus({ type: "success", message: "Experience added successfully!" });
-        setTimeout(() => setStatus(null), 3000); // Hide success message after 3 seconds
+        setStatus({ type: "success", message: dict.addSuccess });
+        setTimeout(() => setStatus(null), 3000); 
       } else {
-        setStatus({ type: "error", message: result.error || "Failed to add experience." });
+        setStatus({ type: "error", message: result.error || dict.addError });
       }
     });
   };
@@ -69,25 +84,24 @@ export default function ExperienceManager({ currentExperience }: { currentExperi
     <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 mt-8">
       <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-900">
         <Briefcase className="w-5 h-5 text-indigo-600" />
-        Experience
+        {dict.title}
       </h2>
 
-      {/* THE INPUT FORM */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-100">
         <input
-          type="text" placeholder="Job Title (e.g. Senior Software Engineer)"
+          type="text" placeholder={dict.jobPlaceholder}
           value={title} onChange={e => setTitle(e.target.value)}
           className="p-3 rounded-xl border-2 border-slate-200 focus:border-indigo-600 outline-none transition-colors"
         />
         <input
-          type="text" placeholder="Company (e.g. Google)"
+          type="text" placeholder={dict.companyPlaceholder}
           value={company} onChange={e => setCompany(e.target.value)}
           className="p-3 rounded-xl border-2 border-slate-200 focus:border-indigo-600 outline-none transition-colors"
         />
         
         <div className="flex gap-4 md:col-span-2 items-start">
           <div className="flex-1">
-            <label className="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">Start Year</label>
+            <label className="text-xs font-bold text-slate-500 uppercase mx-1 mb-1 block">{dict.startYear}</label>
             <input
               type="number" 
               value={startYear} onChange={e => setStartYear(Number(e.target.value))}
@@ -95,7 +109,7 @@ export default function ExperienceManager({ currentExperience }: { currentExperi
             />
           </div>
           <div className="flex-1">
-            <label className="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">End Year</label>
+            <label className="text-xs font-bold text-slate-500 uppercase mx-1 mb-1 block">{dict.endYear}</label>
             <input
               type="number" 
               value={endYear} onChange={e => setEndYear(Number(e.target.value))}
@@ -107,7 +121,6 @@ export default function ExperienceManager({ currentExperience }: { currentExperi
           </div>
         </div>
 
-        {/* ✨ NEW: "I currently work here" Checkbox */}
         <div className="md:col-span-2 flex items-center gap-2 py-1">
           <input 
             type="checkbox" 
@@ -117,17 +130,16 @@ export default function ExperienceManager({ currentExperience }: { currentExperi
             className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-600 cursor-pointer"
           />
           <label htmlFor="current-exp" className="text-sm font-bold text-slate-600 cursor-pointer select-none">
-            I currently work here
+            {dict.currentJob}
           </label>
         </div>
 
         <textarea
-          placeholder="Brief description of your role..."
+          placeholder={dict.descPlaceholder}
           value={description} onChange={e => setDescription(e.target.value)}
           className="p-3 rounded-xl border-2 border-slate-200 focus:border-indigo-600 outline-none md:col-span-2 resize-none h-24 mt-2 transition-colors"
         />
 
-        {/* ✨ NEW: Status Messages */}
         {status && (
           <div className={`md:col-span-2 p-3 rounded-xl flex items-center gap-2 text-sm font-bold animate-in fade-in ${
             status.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
@@ -141,11 +153,10 @@ export default function ExperienceManager({ currentExperience }: { currentExperi
           onClick={handleAdd} disabled={isPending || !title || !company}
           className="bg-indigo-600 text-white font-bold p-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center h-[52px] md:col-span-2 transition-all mt-2"
         >
-          {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Plus className="w-5 h-5 mr-2" /> Add Experience</>}
+          {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Plus className="w-5 h-5 me-2" /> {dict.addButton}</>}
         </button>
       </div>
 
-      {/* THE RENDERED LIST */}
       <div className="space-y-3">
         {currentExperience.length > 0 ? (
           currentExperience.map(exp => (
@@ -154,7 +165,7 @@ export default function ExperienceManager({ currentExperience }: { currentExperi
                 <p className="font-bold text-slate-900">{exp.title}</p>
                 <p className="text-sm font-bold text-indigo-600 mb-1">{exp.company}</p>
                 <p className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-2">
-                  {exp.startYear} - {exp.endYear || "Present"}
+                  {exp.startYear} - {exp.endYear || dict.present}
                 </p>
                 {exp.description && <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">{exp.description}</p>}
               </div>
@@ -164,7 +175,7 @@ export default function ExperienceManager({ currentExperience }: { currentExperi
             </div>
           ))
         ) : (
-          <p className="text-center text-sm font-medium text-slate-400 py-4 italic bg-slate-50 rounded-xl border border-dashed border-slate-200">No experience added yet.</p>
+          <p className="text-center text-sm font-medium text-slate-400 py-4 italic bg-slate-50 rounded-xl border border-dashed border-slate-200">{dict.noExperience}</p>
         )}
       </div>
     </div>

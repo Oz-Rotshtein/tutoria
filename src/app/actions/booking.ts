@@ -7,132 +7,97 @@ import { authOptions } from "../api/auth/[...nextauth]/route";
 // Note: You may need to import your NextAuth configuration here depending on your setup
 // import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-export async function createBooking(
-  tutorId: string, 
-  day: string, 
-  timeSlot: string
-) {
+export async function createBooking(data: {
+  tutorId: string;
+  date: string; // The exact date the student picked (YYYY-MM-DD)
+  timeSlot: string;
+  mode: "ONLINE" | "IN_PERSON_TUTOR" | "IN_PERSON_STUDENT";
+  isRecurring: boolean;
+}) {
   try {
-    // ✨ SECURITY CHECK 1 & 2: Grab the active session
-    const session = await getServerSession(authOptions); 
-    if (!session || !session.user) {
-      return { success: false, error: "You must be logged in to book a lesson." };
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "STUDENT") {
+      return { success: false, error: "Only logged-in students can book lessons." };
     }
 
-    // ✨ SECURITY CHECK 3: Are they a student?
-    if (session.user.role !== "STUDENT") {
-      return { success: false, error: "Only students can book lessons! Tutors cannot book other tutors." };
-    }
-
-    // ==========================================
-    // ✨ THE FIX: FIND OR CREATE THE STUDENT PROFILE
-    // ==========================================
-    let studentProfile = await prisma.student.findUnique({
+    // Find the student's profile ID
+    const student = await prisma.student.findUnique({
       where: { userId: session.user.id }
     });
 
-    // If Alex just signed up and doesn't have a Student profile yet, make one automatically!
-    if (!studentProfile) {
-      studentProfile = await prisma.student.create({
-        data: {
-          userId: session.user.id,
-          name: session.user.name || "New Student",
-          email: session.user.email || "No email provided" // Adds a fallback just in case
-        }
+    if (!student) return { success: false, error: "Student profile not found." };
+
+    // ✨ THE RECURRING MATH ENGINE
+    const startDate = new Date(data.date);
+    const bookingsToCreate = [];
+    
+    // Create a random group ID so we can group these 4 lessons together later
+    const groupId = data.isRecurring ? Math.random().toString(36).substring(2, 11) : null;
+    const numberOfWeeks = data.isRecurring ? 4 : 1; // Book 1 month in advance if recurring
+    const daysMap = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+
+    for (let i = 0; i < numberOfWeeks; i++) {
+      const nextDate = new Date(startDate);
+      nextDate.setDate(startDate.getDate() + (i * 7)); // Add 7 days for each loop
+      const dayName = daysMap[nextDate.getDay()];
+
+      bookingsToCreate.push({
+        studentId: student.id,
+        tutorId: data.tutorId,
+        date: nextDate,
+        day: dayName,
+        timeSlot: data.timeSlot,
+        mode: data.mode,
+        isRecurring: data.isRecurring,
+        recurringGroupId: groupId,
+        status: "PENDING" // Starts as pending until the tutor approves it!
       });
     }
 
-    // THE LOCK: Check if ANY non-cancelled booking already exists for this slot
-    const existingBooking = await prisma.booking.findFirst({
-      where: {
-        tutorId: tutorId,
-        day: day,
-        timeSlot: timeSlot,
-        status: {
-          not: "CANCELLED" 
-        }
-      }
+    // Save all of them to the database at once!
+    await prisma.booking.createMany({
+      data: bookingsToCreate
     });
 
-    if (existingBooking) {
-      return { 
-        success: false, 
-        error: "Sorry, this time slot was just grabbed by someone else!" 
-      };
-    }
-
-    // ✨ Create the booking using the STUDENT profile ID, not the User ID!
-    const booking = await prisma.booking.create({
-      data: {
-        day: day,
-        timeSlot: timeSlot,
-        status: "PENDING",
-        tutor: { connect: { id: tutorId } },
-        student: { connect: { id: studentProfile.id } } // <-- THIS WAS THE MISSING LINK
-      },
-    });
-
-    revalidatePath("/dashboard");
-    revalidatePath(`/tutor/${tutorId}`);
-    
-    return { success: true, booking };
+    revalidatePath("/dashboard/student");
+    return { success: true };
   } catch (error) {
     console.error("Booking Error:", error);
-    return { success: false, error: "A server error occurred while trying to book." };
+    return { success: false, error: "Failed to create booking." };
   }
 }
 
-export async function updateBookingStatus(bookingId: string, newStatus: "CONFIRMED" | "CANCELLED") {
+export async function updateBookingStatus(bookingId: string, newStatus: string) {
   try {
-    const session = await getServerSession();
-
-    // ✨ SECURITY CHECK 1: Are they logged in and a Tutor?
-    if (!session || !session.user || session.user.role !== "TUTOR") {
-      return { success: false, error: "Access denied. Only tutors can manage booking statuses." };
-    }
-
-    // Fetch the original booking
-    const targetBooking = await prisma.booking.findUnique({
+    // 1. Find the specific booking the tutor clicked on
+    const booking = await prisma.booking.findUnique({
       where: { id: bookingId }
     });
 
-    if (!targetBooking) {
-      return { success: false, error: "Booking not found in the database." };
-    }
+    if (!booking) return { success: false, error: "Booking not found." };
 
-    // ✨ SECURITY CHECK 2: Does this tutor actually own this booking?
-    if (targetBooking.tutorId !== session.user.id) {
-      return { success: false, error: "Security alert: You cannot modify another tutor's schedule." };
-    }
-
-    // Update the status
-    const updatedBooking = await prisma.booking.update({
-      where: { id: bookingId },
-      data: { status: newStatus }
-    });
-
-    // THE MAGIC: If confirmed, automatically decline all competing requests!
-    if (newStatus === "CONFIRMED") {
+    // ✨ 2. THE BULK APPROVE LOGIC
+    // If this booking is part of a weekly recurring group, update ALL of them at once!
+    if (booking.recurringGroupId && newStatus === 'CONFIRMED') {
       await prisma.booking.updateMany({
-        where: {
-          tutorId: targetBooking.tutorId, 
-          day: targetBooking.day,         
-          timeSlot: targetBooking.timeSlot, 
-          id: { not: bookingId },         
-          status: "PENDING"               
-        },
-        data: {
-          status: "CANCELLED" 
-        }
+        where: { recurringGroupId: booking.recurringGroupId },
+        data: { status: newStatus }
+      });
+    } else {
+      // Otherwise, just update the single lesson normally
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: newStatus }
       });
     }
 
-    revalidatePath("/dashboard");
+    // Refresh the dashboard
+    revalidatePath("/dashboard/tutor");
+    return { success: true };
     
-    return { success: true, booking: updatedBooking };
   } catch (error) {
-    console.error("Update Booking Error:", error);
-    return { success: false, error: "Failed to update the booking status." };
+    console.error("Failed to update status:", error);
+    return { success: false, error: "Could not update status." };
   }
 }
 
@@ -186,5 +151,27 @@ export async function cancelBookingAsStudent(bookingId: string) {
   } catch (error) {
     console.error("Cancel Booking Error:", error);
     return { success: false, error: "Failed to cancel booking." };
+  }
+}
+export async function saveTutorNotes(bookingId: string, notes: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "TUTOR") {
+      return { success: false, error: "Unauthorized access." };
+    }
+
+    // Update the booking with the new notes
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { tutorNotes: notes }
+    });
+
+    // Refresh the dashboard so the notes show up instantly
+    revalidatePath("/dashboard/tutor");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to save notes:", error);
+    return { success: false, error: "Could not save notes." };
   }
 }

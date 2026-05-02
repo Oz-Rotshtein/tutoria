@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createBooking } from "@/app/actions/booking";
-import { Loader2, Calendar as CalendarIcon, Clock, AlertCircle } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Clock, AlertCircle, CheckCircle2, MapPin, Repeat } from "lucide-react";
 
 interface Availability {
   id: string;
@@ -15,6 +15,7 @@ interface Booking {
   day: string;
   timeSlot: string;
   status: string;
+  date?: string | Date | null; // ✨ NEW: Now expects a real date
 }
 
 interface BookingSectionProps {
@@ -23,8 +24,10 @@ interface BookingSectionProps {
   duration: number;
   availability: Availability[];
   bookings?: Booking[]; 
+  teachingModes: string[]; // ✨ NEW: Needs to know what modes the tutor offers
 }
 
+// Your awesome math function stays exactly the same!
 function generateTimeSlots(startTime: string, endTime: string, durationMinutes: number) {
   const parseTime = (time: string) => {
     const [h, m] = time.split(':').map(Number);
@@ -53,53 +56,75 @@ export default function BookingSection({
   pricePerHour, 
   duration, 
   availability, 
-  bookings = [] 
+  bookings = [],
+  teachingModes
 }: BookingSectionProps) {
-  const [selectedDay, setSelectedDay] = useState<string>("");
+  // ✨ NEW STATE FOR CALENDAR & RECURRING
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null); // ✨ New error state
+  const [selectedMode, setSelectedMode] = useState<string>(teachingModes[0] || "ONLINE");
+  const [isRecurring, setIsRecurring] = useState(false);
+  
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const [optimisticBookings, setOptimisticBookings] = useState<Booking[]>([]);
   const allBookings = [...bookings, ...optimisticBookings];
 
-  const availableDays = Array.from(new Set(availability.map(a => a.day)));
+  // Figure out the Day of the Week from the chosen Calendar Date
+  const getDayOfWeek = (dateString: string) => {
+    if (!dateString) return "";
+    const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+    const date = new Date(dateString);
+    return days[date.getDay()];
+  };
 
+  const dayOfWeek = getDayOfWeek(selectedDate);
+
+  // Generate and filter the slots for the chosen exact date
   const availableSlots = availability
-    .filter(a => a.day.toUpperCase() === selectedDay.toUpperCase())
+    .filter(a => a.day.toUpperCase() === dayOfWeek.toUpperCase())
     .flatMap(a => generateTimeSlots(a.startTime, a.endTime, duration))
     .filter(slot => {
       const cleanSlot = slot.replace(/\s/g, ''); 
       const isBooked = allBookings.some(b => {
         const cleanDbSlot = b.timeSlot.replace(/\s/g, ''); 
-        const isSameDay = b.day.toUpperCase() === selectedDay.toUpperCase();
+        // We now check if the exact DATE matches, not just the day of the week!
+        const isSameDate = b.date ? new Date(b.date).toISOString().split('T')[0] === selectedDate : false;
         const isSameTime = cleanDbSlot === cleanSlot;
         const isNotCancelled = b.status !== "CANCELLED";
-        return isSameDay && isSameTime && isNotCancelled;
+        return isSameDate && isSameTime && isNotCancelled;
       });
       return !isBooked; 
     });
 
   const handleBookLesson = () => {
-    if (!selectedDay || !selectedTime) return;
+    if (!selectedDate || !selectedTime) return;
     
-    setErrorMessage(null); // Clear old errors
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
     startTransition(async () => {
-      // ✨ SECURITY UPDATE: We removed the MOCK_ID! The server handles it now.
-      const result = await createBooking(tutorId, selectedDay, selectedTime);
+      // ✨ Send the new complex payload to the server action
+      const result = await createBooking({
+        tutorId,
+        date: selectedDate,
+        timeSlot: selectedTime,
+        mode: selectedMode as any,
+        isRecurring
+      });
       
       if (result.success) {
         setOptimisticBookings(prev => [
           ...prev, 
-          { day: selectedDay, timeSlot: selectedTime, status: "PENDING" }
+          { day: dayOfWeek, date: selectedDate, timeSlot: selectedTime, status: "PENDING" }
         ]);
-        setSelectedDay("");
+        setSuccessMessage(isRecurring ? "4 Weekly lessons requested!" : "Lesson requested successfully!");
+        setSelectedDate("");
         setSelectedTime("");
-        // Optional: you could add a success state message here too!
-        alert("Booking request sent successfully!"); 
+        setIsRecurring(false);
       } else {
-        // ✨ Catch the server's clear error message
         setErrorMessage(result.error || "Failed to book lesson. Please try again.");
       }
     });
@@ -115,34 +140,30 @@ export default function BookingSection({
       </div>
 
       <div className="space-y-6">
-        {/* Step 1: Select Day */}
+        {/* ✨ Step 1: Select EXACT DATE (Replaced the Day Buttons) */}
         <div>
           <label className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-3">
-            <CalendarIcon className="w-4 h-4 text-indigo-600" /> Select Day
+            <CalendarIcon className="w-4 h-4 text-indigo-600" /> 1. Select a Date
           </label>
-          <div className="grid grid-cols-2 gap-2">
-            {availableDays.length > 0 ? (
-              availableDays.map(day => (
-                <button
-                  key={day}
-                  onClick={() => { setSelectedDay(day); setSelectedTime(""); setErrorMessage(null); }}
-                  className={`p-3 rounded-xl text-sm font-bold transition-all border-2 
-                    ${selectedDay === day ? "border-indigo-600 bg-indigo-50 text-indigo-700" : "border-slate-100 text-slate-600 hover:border-indigo-200"}`}
-                >
-                  {day}
-                </button>
-              ))
-            ) : (
-              <p className="col-span-2 text-sm text-slate-500 italic">No availability listed.</p>
-            )}
-          </div>
+          <input
+            type="date"
+            min={new Date().toISOString().split("T")[0]} // Prevent booking in the past
+            value={selectedDate}
+            onChange={(e) => {
+              setSelectedDate(e.target.value);
+              setSelectedTime(""); // Reset time if date changes
+              setErrorMessage(null);
+              setSuccessMessage(null);
+            }}
+            className="w-full p-4 rounded-xl border-2 border-slate-200 focus:border-indigo-600 outline-none transition-all text-slate-700 font-medium bg-slate-50 hover:bg-white"
+          />
         </div>
 
         {/* Step 2: Select Time */}
-        {selectedDay && (
+        {selectedDate && (
           <div className="animate-in fade-in slide-in-from-top-2 duration-300">
             <label className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-3">
-              <Clock className="w-4 h-4 text-indigo-600" /> Select Time
+              <Clock className="w-4 h-4 text-indigo-600" /> 2. Select Time ({dayOfWeek})
             </label>
             <div className="grid grid-cols-2 gap-2"> 
               {availableSlots.length > 0 ? (
@@ -157,29 +178,71 @@ export default function BookingSection({
                   </button>
                 ))
               ) : (
-                <p className="col-span-2 text-sm text-slate-500 italic font-medium p-4 bg-slate-50 rounded-xl text-center">
-                  All slots booked for this day.
+                <p className="col-span-2 text-sm text-slate-500 italic font-medium p-4 bg-amber-50 border border-amber-100 text-amber-700 rounded-xl text-center">
+                  Tutor is not available on {dayOfWeek.toLowerCase()}s, or all slots are booked.
                 </p>
               )}
             </div>
           </div>
         )}
 
-        {/* ✨ Step 3: Error Message Display */}
+        {/* ✨ Step 3: Select Mode & Recurring */}
+        {selectedTime && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4 pt-4 border-t border-slate-100">
+            <div>
+              <label className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-3">
+                <MapPin className="w-4 h-4 text-indigo-600" /> 3. Lesson Location
+              </label>
+              <select 
+                value={selectedMode} 
+                onChange={(e) => setSelectedMode(e.target.value)}
+                className="w-full p-4 rounded-xl border-2 border-slate-200 focus:border-indigo-600 outline-none font-medium text-slate-700 appearance-none bg-slate-50 hover:bg-white cursor-pointer"
+              >
+                {teachingModes.map(mode => (
+                  <option key={mode} value={mode}>{mode.replace(/_/g, " ")}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* THE RECURRING CHECKBOX */}
+            <div 
+              className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" 
+              onClick={() => setIsRecurring(!isRecurring)}
+            >
+              <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors shrink-0 ${isRecurring ? "bg-indigo-600 border-indigo-600" : "bg-white border-slate-300"}`}>
+                {isRecurring && <CheckCircle2 className="w-4 h-4 text-white" />}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900 flex items-center gap-1">
+                  <Repeat className="w-4 h-4 text-indigo-600" /> Repeat Weekly
+                </p>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">Automatically request this slot for the next 4 weeks.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Status Messages */}
         {errorMessage && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-start gap-2 text-sm font-medium animate-in fade-in">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+          <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-start gap-2 text-sm font-bold animate-in fade-in">
+            <AlertCircle className="w-5 h-5 shrink-0" />
             <p>{errorMessage}</p>
+          </div>
+        )}
+        {successMessage && (
+          <div className="bg-emerald-50 text-emerald-700 p-4 rounded-xl flex items-start gap-2 text-sm font-bold animate-in fade-in">
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <p>{successMessage}</p>
           </div>
         )}
 
         {/* Step 4: Confirm */}
         <button
           onClick={handleBookLesson}
-          disabled={!selectedDay || !selectedTime || isPending}
+          disabled={!selectedDate || !selectedTime || isPending}
           className="w-full mt-4 bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {isPending ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</> : "Confirm Booking"}
+          {isPending ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</> : "Request Booking"}
         </button>
       </div>
     </div>

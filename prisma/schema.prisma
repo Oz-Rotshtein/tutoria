@@ -100,7 +100,7 @@ model Tutor {
   longitude         Float?    // The exact East/West coordinate
   maxTravelDistance Int       @default(10)
 
-
+  tagLine String? 
   teachingModes  TeachingMode[] // Array of modes they offer
   isVerified     Boolean        @default(false) // For the blue checkmark!
   

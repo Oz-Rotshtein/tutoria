@@ -1,0 +1,169 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save"
+  },
+  "components": {
+    "availability": {
+      "addButton": "Add",
+      "dayLabel": "Day",
+      "days": {
+        "FRIDAY": "Friday",
+        "MONDAY": "Monday",
+        "SATURDAY": "Saturday",
+        "SUNDAY": "Sunday",
+        "THURSDAY": "Thursday",
+        "TUESDAY": "Tuesday",
+        "WEDNESDAY": "Wednesday"
+      },
+      "endTimeLabel": "End Time",
+      "noAvailability": "No availability set. Add some slots above!",
+      "startTimeLabel": "Start Time"
+    },
+    "profileImage": {
+      "title": "Profile Picture",
+      "description": "A professional photo helps students build trust and book more lessons. (Max 2MB, JPG/PNG)",
+      "uploadButton": "Upload New Photo"
+    },
+    "education": {
+      "addError": "Failed to add education.",
+      "addSuccess": "Education added successfully!",
+      "clickToUpload": "Click to upload document",
+      "currentStudy": "I currently study here",
+      "degreePlaceholder": "Degree (e.g. B.S. Computer Science)",
+      "endYear": "End Year",
+      "fileTooLarge": "File is too large (Max 5MB).",
+      "generalError": "Something went wrong.",
+      "institutionPlaceholder": "Institution (e.g. MIT)",
+      "noEducation": "No education added yet.",
+      "present": "Present",
+      "remove": "Remove",
+      "saveButton": "Save Education",
+      "startYear": "Start Year",
+      "title": "Education & Verification",
+      "uploadConstraints": "PDF, JPG, or PNG (MAX 5MB)",
+      "uploadLabel": "Upload Degree / Transcript (Optional)",
+      "verified": "Verified"
+    },
+    "experience": {
+      "addButton": "Add Experience",
+      "addError": "Failed to add experience.",
+      "addSuccess": "Experience added successfully!",
+      "companyPlaceholder": "Company (e.g. Google)",
+      "currentJob": "I currently work here",
+      "descPlaceholder": "Brief description of your role...",
+      "endYear": "End Year",
+      "jobPlaceholder": "Job Title (e.g. Senior Software Engineer)",
+      "noExperience": "No experience added yet.",
+      "present": "Present",
+      "startYear": "Start Year",
+      "title": "Experience"
+    },
+    "notes": {
+      "label": "Lesson Notes & Homework",
+      "placeholder": "Leave a summary or homework for the student...",
+      "saveButton": "Save Notes",
+      "savedButton": "Saved"
+    },
+    "settings": {
+      "bioLabel": "About Me / Bio",
+      "nameLabel": "Full Name",
+      "priceLabel": "Price Per Hour ($)",
+      "saveButton": "Save Changes",
+      "savingButton": "Saving...",
+      "successMessage": "Profile updated successfully!",
+      "taglineLabel": "Short Headline / Tagline",
+      "durationLabel": "Default Session Length (Minutes)",
+      "teachingStyleLabel": "Teaching Methodology / How I Teach",
+      "methodsLabel": "Teaching Locations",
+      "methodOnline": "Online (Zoom/Meet)",
+      "methodAtTutor": "At my place",
+      "methodAtStudent": "At student's place"
+    },
+    "subjects": {
+      "addButton": "Add",
+      "addError": "Failed to add subject.",
+      "addSuccess": "Subject added successfully!",
+      "noSubjects": "No subjects added yet. Add some above so students can find you!",
+      "placeholder": "e.g., Advanced Calculus, React.js...",
+      "removeError": "Failed to remove subject.",
+      "removeSuccess": "Subject removed successfully!",
+      "title": "Subjects I Teach"
+    }
+  },
+  "dashboard": {
+    "bookLesson": "Book a Lesson",
+    "overview": "Here is your learning overview.",
+    "title": "Student Dashboard",
+    "welcome": "Welcome back",
+    "history": {
+      "emptyDesc": "You haven't booked any lessons. Start exploring our expert tutors to begin learning!",
+      "emptyTitle": "No lessons yet",
+      "explore": "Explore Tutors",
+      "lessonWith": "Lesson with",
+      "notes": "Notes from Tutor",
+      "rated": "You rated this lesson",
+      "stars": "stars",
+      "title": "Your Learning History"
+    },
+    "sidebar": {
+      "browse": "Browse Tutors",
+      "contact": "Contact Support",
+      "helpDesc": "Having trouble connecting with a tutor or adjusting your schedule?",
+      "helpTitle": "Need Help?",
+      "refresherDesc": "Book a follow-up session with your favorite tutors to keep the momentum going.",
+      "refresherTitle": "Need a refresher?"
+    },
+    "stats": {
+      "completed": "Completed Lessons",
+      "reviews": "Reviews Given",
+      "tutors": "Different Tutors",
+      "upcoming": "Upcoming Lessons"
+    },
+    "tutor": {
+      "subtitle": "Manage your profile and students as",
+      "title": "Tutor Dashboard",
+      "viewProfile": "View Public Profile",
+      "booking": {
+        "noBookings": "No bookings yet.",
+        "viewDetails": "View Details",
+        "weeklySeries": "Weekly Series"
+      },
+      "sections": {
+        "general": "General Information",
+        "requests": "Bookings & Requests",
+        "schedule": "Manage Schedule"
+      },
+      "stats": {
+        "hourlyRate": "Hourly Rate",
+        "sessionLength": "Session Length",
+        "totalBookings": "Total Bookings",
+        "uniqueStudents": "Unique Students"
+      }
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "findTutors": "Find Tutors",
+    "signIn": "Sign In",
+    "signOut": "Sign Out"
+  },
+  "publicProfile": {
+    "bookLesson": "Book Lesson",
+    "aboutMe": "About Me",
+    "teachingStyle": "Teaching Methodology",
+    "subjects": "Subjects",
+    "experience": "Experience",
+    "education": "Education",
+    "availability": "Availability Schedule",
+    "pricePerHour": "/ hour",
+    "sessionLength": "min session",
+    "locations": "Teaching Locations",
+    "online": "Online",
+    "atTutor": "Tutor's Place",
+    "atStudent": "Student's Place",
+    "present": "Present",
+    "notFoundTitle": "Tutor Not Found",
+    "notFoundDesc": "The tutor profile you are looking for does not exist or has been removed."
+  }
+}

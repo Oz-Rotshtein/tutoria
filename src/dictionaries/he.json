@@ -1,0 +1,169 @@
+{
+  "common": {
+    "loading": "טוען...",
+    "save": "שמור"
+  },
+  "components": {
+    "availability": {
+      "addButton": "הוסף",
+      "dayLabel": "יום",
+      "days": {
+        "FRIDAY": "שישי",
+        "MONDAY": "שני",
+        "SATURDAY": "שבת",
+        "SUNDAY": "ראשון",
+        "THURSDAY": "חמישי",
+        "TUESDAY": "שלישי",
+        "WEDNESDAY": "רביעי"
+      },
+      "endTimeLabel": "שעת סיום",
+      "noAvailability": "לא הוגדרה זמינות. הוסף חלונות זמן למעלה!",
+      "startTimeLabel": "שעת התחלה"
+    },
+    "profileImage": {
+      "title": "תמונת פרופיל",
+      "description": "תמונה מקצועית עוזרת לתלמידים לבנות אמון ולהזמין יותר שיעורים. (מקסימום 2MB, JPG/PNG)",
+      "uploadButton": "העלה תמונה חדשה"
+    },
+    "education": {
+      "addError": "הוספת השכלה נכשלה.",
+      "addSuccess": "ההשכלה נוספה בהצלחה!",
+      "clickToUpload": "לחץ להעלאת מסמך",
+      "currentStudy": "אני לומד כאן כרגע",
+      "degreePlaceholder": "תואר (לדוגמה: תואר ראשון במדעי המחשב)",
+      "endYear": "שנת סיום",
+      "fileTooLarge": "הקובץ גדול מדי (מקסימום 5MB).",
+      "generalError": "משהו השתבש.",
+      "institutionPlaceholder": "מוסד אקדמי (לדוגמה: אוניברסיטת תל אביב)",
+      "noEducation": "לא נוספה השכלה עדיין.",
+      "present": "היום",
+      "remove": "הסר",
+      "saveButton": "שמור השכלה",
+      "startYear": "שנת התחלה",
+      "title": "השכלה ואימות",
+      "uploadConstraints": "PDF, JPG או PNG (עד 5MB)",
+      "uploadLabel": "העלאת תעודה / גיליון ציונים (רשות)",
+      "verified": "מאומת"
+    },
+    "experience": {
+      "addButton": "הוסף ניסיון",
+      "addError": "הוספת הניסיון נכשלה.",
+      "addSuccess": "הניסיון נוסף בהצלחה!",
+      "companyPlaceholder": "חברה (לדוגמה: גוגל)",
+      "currentJob": "אני עובד כאן כרגע",
+      "descPlaceholder": "תיאור קצר של התפקיד שלך...",
+      "endYear": "שנת סיום",
+      "jobPlaceholder": "תפקיד (לדוגמה: מפתח תוכנה)",
+      "noExperience": "לא נוסף ניסיון עדיין.",
+      "present": "היום",
+      "startYear": "שנת התחלה",
+      "title": "ניסיון תעסוקתי"
+    },
+    "notes": {
+      "label": "הערות שיעור ושיעורי בית",
+      "placeholder": "השאר סיכום או שיעורי בית לתלמיד...",
+      "saveButton": "שמור הערות",
+      "savedButton": "נשמר"
+    },
+    "settings": {
+      "bioLabel": "על עצמי / קורות חיים",
+      "nameLabel": "שם מלא",
+      "priceLabel": "תעריף שעתי ($)",
+      "saveButton": "שמור שינויים",
+      "savingButton": "שומר...",
+      "successMessage": "הפרופיל עודכן בהצלחה!",
+      "taglineLabel": "כותרת קצרה / תיאור תמציתי",
+      "durationLabel": "אורך שיעור ברירת מחדל (בדקות)",
+      "teachingStyleLabel": "שיטת הלימוד שלי / איך אני מלמד",
+      "methodsLabel": "מיקומי לימוד",
+      "methodOnline": "אונליין (זום/מיט)",
+      "methodAtTutor": "אצלי בבית",
+      "methodAtStudent": "בבית התלמיד"
+    },
+    "subjects": {
+      "addButton": "הוסף",
+      "addError": "הוספת המקצוע נכשלה.",
+      "addSuccess": "המקצוע נוסף בהצלחה!",
+      "noSubjects": "טרם נוספו מקצועות. הוסף מקצועות כדי שתלמידים יוכלו למצוא אותך!",
+      "placeholder": "לדוגמה: אלגברה ליניארית, React.js...",
+      "removeError": "הסרת המקצוע נכשלה.",
+      "removeSuccess": "המקצוע הוסר בהצלחה!",
+      "title": "מקצועות שאני מלמד"
+    }
+  },
+  "dashboard": {
+    "bookLesson": "קבע שיעור",
+    "overview": "הנה סקירת הלמידה שלך.",
+    "title": "לוח בקרת תלמיד",
+    "welcome": "ברוך שובך",
+    "history": {
+      "emptyDesc": "עדיין לא קבעת שיעורים. התחל לחקור את המורים המומחים שלנו כדי להתחיל ללמוד!",
+      "emptyTitle": "אין שיעורים עדיין",
+      "explore": "חקור מורים",
+      "lessonWith": "שיעור עם",
+      "notes": "הערות מהמורה",
+      "rated": "דירגת שיעור זה",
+      "stars": "כוכבים",
+      "title": "היסטוריית הלמידה שלך"
+    },
+    "sidebar": {
+      "browse": "דפדף במורים",
+      "contact": "צור קשר עם התמיכה",
+      "helpDesc": "מתקשה ליצור קשר עם מורה או להתאים את לוח הזמנים שלך?",
+      "helpTitle": "צריך עזרה?",
+      "refresherDesc": "קבע שיעור המשך עם המורים האהובים עליך כדי לשמור על המומנטום.",
+      "refresherTitle": "צריך רענון?"
+    },
+    "stats": {
+      "completed": "שיעורים שהושלמו",
+      "reviews": "ביקורות שניתנו",
+      "tutors": "מורים שונים",
+      "upcoming": "שיעורים קרובים"
+    },
+    "tutor": {
+      "subtitle": "נהל את הפרופיל והתלמידים שלך בתור",
+      "title": "לוח בקרת מורה",
+      "viewProfile": "צפה בפרופיל ציבורי",
+      "booking": {
+        "noBookings": "אין הזמנות עדיין.",
+        "viewDetails": "צפה בפרטים",
+        "weeklySeries": "סדרה שבועית"
+      },
+      "sections": {
+        "general": "מידע כללי",
+        "requests": "הזמנות ובקשות",
+        "schedule": "ניהול לוח זמנים"
+      },
+      "stats": {
+        "hourlyRate": "תעריף שעתי",
+        "sessionLength": "אורך שיעור",
+        "totalBookings": "סך הכל הזמנות",
+        "uniqueStudents": "תלמידים ייחודיים"
+      }
+    }
+  },
+  "nav": {
+    "dashboard": "לוח בקרה",
+    "findTutors": "חיפוש מורים",
+    "signIn": "התחבר",
+    "signOut": "התנתק"
+  },
+  "publicProfile": {
+    "bookLesson": "קבע שיעור",
+    "aboutMe": "על עצמי",
+    "teachingStyle": "שיטת הלימוד שלי",
+    "subjects": "מקצועות לימוד",
+    "experience": "ניסיון תעסוקתי",
+    "education": "השכלה",
+    "availability": "לוח זמנים וזמינות",
+    "pricePerHour": "/ שעה",
+    "sessionLength": "דקות לשיעור",
+    "locations": "מיקומי לימוד",
+    "online": "אונליין",
+    "atTutor": "אצל המורה",
+    "atStudent": "בבית התלמיד",
+    "present": "היום",
+    "notFoundTitle": "מורה לא נמצא",
+    "notFoundDesc": "פרופיל המורה שחיפשת אינו קיים או הוסר."
+  }
+}
